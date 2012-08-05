@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+    <title>10k</title>
+    <body>
+        <center><canvas id="c" width="640" height="480"></canvas></center>
+        <script>
+            (function () {
+                var el = document.getElementById('c'),
+                c = el.getContext('2d'),
+                w = 640,
+                h = 480,
+                wh = w / 2,
+                hh = h / 2,
+                scale = 500;
+                c.l = c.lineTo;
+                c.m = c.moveTo;
+
+                                
+                // Vertex
+                function vertex(x, y, z) {
+                    var _this = this;
+                    _this.x = x;
+                    _this.sX = function () {
+                        return _this.x * scale / _this.z + wh;
+                    }
+                    _this.y = y;
+                    _this.sY = function () {
+                        return _this.y * scale / _this.z + hh;
+                    }
+                    _this.z = z;
+                }
+                
+                // Object
+                function o(points) {
+                    var _this = this;
+                    _this.vertices = [];
+                    _this.tmp = [];
+                    for (var i = 0; points[i]; i++) {
+                        _this.vertices.push(
+                            new vertex(
+                                points[i][0],
+                                points[i][1], 
+                                points[i][2]
+                            )
+                        )
+                        _this.tmp = {};
+                    }
+                }
+
+                function multMatVert(mat, vert) {
+                    var v = new vertex();
+                    v.x =   vert.x * mat[0][0] +
+                            vert.y * mat[0][1] + 
+                            vert.z * mat[0][2] +
+                                     mat[0][3];
+
+                    v.y =   vert.x * mat[1][0] +
+                            vert.y * mat[1][1] + 
+                            vert.z * mat[1][2] +
+                                     mat[1][3];
+
+                    v.z =   vert.x * mat[2][0] +
+                            vert.y * mat[2][1] + 
+                            vert.z * mat[2][2] +
+                                     mat[2][3];
+                                     
+                    return v;
+                }
+                
+                // Clear viewscreen
+                function clear() {
+                    c.clearRect(0, 0, w, h);
+                }
+                
+                // Defines a cube
+                function getCube(u) {
+                    var cube = new o([
+                        [-u, -u, -u], // 0 left bottom back
+                        [u, -u, -u],  // 1 right bottom back
+                        [u, u, -u],   // 2 right top back
+                        [-u, u, -u],  // 3 left top back
+                        [-u, -u, u],  // 4 left bottom front
+                        [u, -u, u],   // 5 right bottom front
+                        [u, u, u],    // 6 right top front
+                        [-u, u, u]    // 7 left top front
+                    ]);
+                    cube.draw = function () {
+                        var v = this.tmp;
+                        c.beginPath();
+                        
+                        // back panel
+                        c.m(v[0].sX(), v[0].sY());
+                        c.l(v[1].sX(), v[1].sY());
+                        c.l(v[2].sX(), v[2].sY());
+                        c.l(v[3].sX(), v[3].sY());
+                        c.l(v[0].sX(), v[0].sY());
+                        
+                        // front panel
+                        c.l(v[4].sX(), v[4].sY());
+                        c.l(v[5].sX(), v[5].sY());
+                        c.l(v[6].sX(), v[6].sY());
+                        c.l(v[7].sX(), v[7].sY());
+                        c.l(v[4].sX(), v[4].sY());
+
+                        // connecting lines
+                        c.m(v[5].sX(), v[5].sY());
+                        c.l(v[1].sX(), v[1].sY());
+
+                        c.m(v[6].sX(), v[6].sY());
+                        c.l(v[2].sX(), v[2].sY());                        
+
+                        c.m(v[7].sX(), v[7].sY());
+                        c.l(v[3].sX(), v[3].sY());                        
+                        
+                        c.strokeStyle = "silver";
+                        c.stroke();
+                    }
+                    return cube;
+                }
+                
+                function makeCubes() {
+                    var ret = [];
+                    for (i = 0; i < 3; i++) {
+                        ret.push(getCube((i + 1) * 50));
+                    }
+                    return ret;
+                }
+
+                function main() {  
+                    // Cube
+                    var cubes = makeCubes(), /*[getCube(150), getCube(25), getCube(75)],*/
+                        rx = 0,
+                        ry = 0,
+                        rz = 0,
+                    
+                    s = setInterval(function () {
+                        //clearInterval(s);
+                                            
+                        rx += .005;
+                        ry += .01;
+                        rz += .005;
+
+                        var rotY = [
+                            [Math.cos(ry), 0, Math.sin(ry), 0],
+                            [0, 1, 0, 0],
+                            [-Math.sin(ry), 0, Math.cos(ry), 0],
+                            [0, 0, 0, 1]
+                        ];
+                        var rotX = [
+                            [1, 0, 0, 0],
+                            [0, Math.cos(rx), -Math.sin(rx), 0],
+                            [0, Math.sin(rx), Math.cos(rx), 0],
+                            [0, 0, 0, 1]
+                        ];
+                        var rotZ = [
+                            [Math.cos(rz), -Math.sin(rz), 0, 0],
+                            [Math.sin(rz), Math.cos(rz), 0, 0],
+                            [0, 0, 1, 0],
+                            [0, 0, 0, 1]
+                        ];
+                        var trans = [
+                            [1,0,0,0],
+                            [0,1,0,0],
+                            [0,0,1,-500],
+                            [0,0,0,1]
+                        ];
+                        clear();
+                        for (var i = 0; cubes[i]; i++) {
+                            for (var j = 0; cubes[i].vertices[j]; j++) {
+                                cubes[i].tmp[j] = multMatVert(rotY, cubes[i].vertices[j]);
+                                cubes[i].tmp[j] = multMatVert(rotX, cubes[i].tmp[j]);
+                                cubes[i].tmp[j] = multMatVert(rotZ, cubes[i].tmp[j]);
+                                cubes[i].tmp[j] = multMatVert(trans, cubes[i].tmp[j]);
+                            }                                
+                            cubes[i].draw();
+                        }
+                    }, 10)
+                }                
+                main();
+            })()
+        </script>
+    </body>
+</html>
